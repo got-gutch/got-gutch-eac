@@ -5,7 +5,7 @@ locals {
 }
 
 resource "aws_iam_role" "iam_role" {
-  name = "${local.namespace}-tf-assume-role"
+  name = "${local.namespace}-state-assume-role"
 
   assume_role_policy = <<-EOF
     {
@@ -23,7 +23,7 @@ resource "aws_iam_role" "iam_role" {
   EOF
 
   tags = {
-    ResourceGroup = local.namespace
+    resource_group = local.namespace
   }
 }
 
@@ -65,9 +65,12 @@ data "aws_iam_policy_document" "policy_doc" {
 }
 
 resource "aws_iam_policy" "iam_policy" {
-  name   = "${local.namespace}-tf-policy"
+  name   = "${local.namespace}-state-policy"
   path   = "/"
   policy = data.aws_iam_policy_document.policy_doc.json
+  tags = {
+    resource_group = local.namespace
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "policy_attach" {

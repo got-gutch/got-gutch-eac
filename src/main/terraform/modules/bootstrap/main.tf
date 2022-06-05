@@ -14,7 +14,7 @@ resource "aws_resourcegroups_group" "resourcegroups_group" {
   ],
   "TagFilters": [
     {
-      "Key": "ResourceGroup",
+      "Key": "resource_group",
       "Values": ["${local.namespace}"]
     }
   ]
@@ -25,8 +25,13 @@ resource "aws_resourcegroups_group" "resourcegroups_group" {
 
 resource "aws_kms_key" "kms_key" {
   tags = {
-    ResourceGroup = local.namespace
+    resource_group = local.namespace
   }
+}
+
+resource "aws_kms_alias" "kms_key_alias" {
+  target_key_id = aws_kms_key.kms_key.key_id
+  name          = "alias/${local.namespace}/state-key"
 }
 
 resource "aws_s3_bucket" "s3_bucket" {
@@ -34,7 +39,7 @@ resource "aws_s3_bucket" "s3_bucket" {
   force_destroy = var.force_destroy_state
 
   tags = {
-    ResourceGroup = local.namespace
+    resource_group = local.namespace
   }
 }
 
@@ -72,6 +77,6 @@ resource "aws_dynamodb_table" "dynamodb_table" {
     type = "S"
   }
   tags = {
-    ResourceGroup = local.namespace
+    resource_group = local.namespace
   }
 }
