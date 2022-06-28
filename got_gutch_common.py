@@ -34,23 +34,27 @@ def create_backend(working_dir, variables):
     return tf.output()
 
 
-def destroy_backend(working_dir, variables):
-    tf = Terraform(working_dir=working_dir, variables=variables)
-    tf.destroy(capture_output='no', no_color=IsNotFlagged, force=IsNotFlagged, auto_approve=True)
+def clean_layer(working_dir):
     working_files = [
-        tf.working_dir + "\\tfplan.json",
-        tf.working_dir + "\\terraform.tfstate",
-        tf.working_dir + "\\terraform.tfstate.backup",
-        tf.working_dir + "\\.terraform.lock.hcl"
+        working_dir + "\\tfplan.json",
+        working_dir + "\\terraform.tfstate",
+        working_dir + "\\terraform.tfstate.backup",
+        working_dir + "\\.terraform.lock.hcl"
     ]
     for file_to_remove in working_files:
         if os.path.isfile(file_to_remove):
             print('Deleting file ' + os.path.basename(file_to_remove))
             os.remove(file_to_remove)
-    dir_to_remove = tf.working_dir + '\\.terraform'
+    dir_to_remove = working_dir + '\\.terraform'
     if os.path.isdir(dir_to_remove):
         print('Deleting dir .terraform')
         shutil.rmtree(dir_to_remove)
+
+
+def destroy_backend(working_dir, variables):
+    tf = Terraform(working_dir=working_dir, variables=variables)
+    tf.destroy(capture_output='no', no_color=IsNotFlagged, force=IsNotFlagged, auto_approve=True)
+    clean_layer(tf.working_dir)
 
 
 def get_backend_config(tf_output):
@@ -58,6 +62,7 @@ def get_backend_config(tf_output):
 terraform {{
   backend "s3" {{
     bucket         = "{tf_output['backend']['value']['config']['bucket']}"
+    key            = "{tf_output['backend']['value']['config']['bucket'].removesuffix('-state-bucket') + '/terraform.tfstate'}"
     region         = "{tf_output['backend']['value']['config']['region']}"
     dynamodb_table = "{tf_output['backend']['value']['config']['dynamodb_table']}"
     role_arn       = "{tf_output['backend']['value']['config']['role_arn']}"
@@ -66,8 +71,51 @@ terraform {{
 """
 
 
+def switch_to_workspace(layer_name):
+    tf = Terraform(get_layer_home(layer_name), get_layer_vars())
+    wksp_cmd = 'workspace'
+    list_rc, list_stdout, list_stderr = tf.cmd(wksp_cmd, 'list')
+    if list_rc == 0:
+        if layer_name not in list_stdout.split():
+            print(f"Creating {layer_name} " + wksp_cmd)
+            new_rc, new_stdout, new_stderr = tf.cmd(wksp_cmd, 'new', layer_name)
+            if list_rc != 0:
+                raise TerraformCommandError(new_rc, wksp_cmd, new_stdout, new_stderr)
+        else:
+            print(f"Using {layer_name} " + wksp_cmd)
+            select_rc, select_stdout, select_stderr = tf.cmd(wksp_cmd, 'select', layer_name)
+            if select_rc != 0:
+                raise TerraformCommandError(select_rc, wksp_cmd, select_stdout, select_stderr)
+    else:
+        raise TerraformCommandError(list_rc, wksp_cmd, list_stdout, list_stderr)
+
+
 def create_backend_config(layer_name):
     tf = Terraform(get_layer_home('bootstrap'), get_layer_vars())
     with open(get_layer_home(layer_name) + '\\backend.tf', 'w') as f:
         f.write(get_backend_config(tf.output()))
     print('Backend config written to ' + get_layer_home(layer_name) + '\\backend.tf')
+
+
+def apply_layer(layer_name):
+    create_backend_config(layer_name)
+    tf = Terraform(get_layer_home(layer_name), get_layer_vars())
+    init_rc, stdout, stderr = tf.init()
+    if init_rc != 0:
+        raise TerraformCommandError(init_rc, 'init', stdout, stderr)
+    print('Layer initialized')
+    switch_to_workspace(layer_name)
+    apply_rc, stdout, stderr = tf.apply(skip_plan=False, var=None, auto_approve=IsFlagged, input=False, capture_output='No')
+    if apply_rc != 0:
+        raise TerraformCommandError(apply_rc, 'apply', stdout, stderr)
+    return tf.output()
+
+
+def destroy_layer(layer_name):
+    create_backend_config(layer_name)
+    tf = Terraform(get_layer_home(layer_name), get_layer_vars())
+    tf.init(capture_output='no')
+    print('Layer initialized')
+    switch_to_workspace(layer_name)
+    tf.destroy(capture_output='no', no_color=IsNotFlagged, force=IsNotFlagged, auto_approve=IsFlagged)
+    clean_layer(tf.working_dir)

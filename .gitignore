@@ -14,6 +14,10 @@
 # Crash log files
 crash.log
 
+# tfvar files under layers
+src/main/terraform/layers/**/*.tfvars
+src/main/terraform/layers/**/backend.tf
+
 # Ignore any .tfvars files that are generated automatically for each Terraform run. Most
 # .tfvars files are managed as part of configuration and so should be included in
 # version control.
@@ -27,9 +31,9 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
-# Include override files you do wish to add to version control using negated pattern
+# Exclude intellij iml files in root
 #
-# !example_override.tf
+*.iml
 
 # Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
 # example: *tfplan*

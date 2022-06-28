@@ -27,6 +27,10 @@ resource "aws_iam_role" "iam_role" {
   }
 }
 
+data "aws_kms_alias" "s3_kms_alias" {
+  name = "alias/aws/s3"
+}
+
 data "aws_iam_policy_document" "policy_doc" {
   statement {
     actions = [
@@ -60,7 +64,7 @@ data "aws_iam_policy_document" "policy_doc" {
       "kms:Decrypt",
       "kms:GenerateDataKey"
     ]
-    resources = [aws_kms_key.kms_key.arn]
+    resources = [data.aws_kms_alias.s3_kms_alias.target_key_arn]
   }
 }
 
