@@ -5,12 +5,12 @@ variable "sysadmins" {
 
 variable "admins" {
   type    = list(string)
-  default = ["bgutch"]
+  default = ["mkgutch"]
 }
 
 variable "usernames" {
   type    = list(string)
-  default = ["bgutch"]
+  default = ["bgutch", "mkgutch"]
 }
 
 variable "region" {

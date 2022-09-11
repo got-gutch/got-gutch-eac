@@ -2,6 +2,7 @@ from python_terraform import *
 import os
 import boto3
 import shutil
+import stat
 
 
 def get_account_id():
@@ -34,6 +35,25 @@ def create_backend(working_dir, variables):
     return tf.output()
 
 
+def onerror(func, path, exc_info):
+    """
+    Error handler for ``shutil.rmtree``.
+
+    If the error is due to an access error (read only file)
+    it attempts to add write permission and then retries.
+
+    If the error is for another reason it re-raises the error.
+
+    Usage : ``shutil.rmtree(path, onerror=onerror)``
+    """
+    # Is the error an access error?
+    if not os.access(path, os.W_OK):
+        os.chmod(path, stat.S_IWUSR)
+        func(path)
+    else:
+        raise
+
+
 def clean_layer(working_dir):
     working_files = [
         working_dir + "\\tfplan.json",
@@ -48,7 +68,7 @@ def clean_layer(working_dir):
     dir_to_remove = working_dir + '\\.terraform'
     if os.path.isdir(dir_to_remove):
         print('Deleting dir .terraform')
-        shutil.rmtree(dir_to_remove)
+        shutil.rmtree(dir_to_remove, onerror=onerror)
 
 
 def destroy_backend(working_dir, variables):
@@ -105,7 +125,8 @@ def apply_layer(layer_name):
         raise TerraformCommandError(init_rc, 'init', stdout, stderr)
     print('Layer initialized')
     switch_to_workspace(layer_name)
-    apply_rc, stdout, stderr = tf.apply(skip_plan=False, var=None, auto_approve=IsFlagged, input=False, capture_output='No')
+    apply_rc, stdout, stderr = tf.apply(skip_plan=False, var=None, auto_approve=IsFlagged, input=False,
+                                        capture_output='No')
     if apply_rc != 0:
         raise TerraformCommandError(apply_rc, 'apply', stdout, stderr)
     return tf.output()
