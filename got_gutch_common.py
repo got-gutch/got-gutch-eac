@@ -125,8 +125,7 @@ def apply_layer(layer_name):
         raise TerraformCommandError(init_rc, 'init', stdout, stderr)
     print('Layer initialized')
     switch_to_workspace(layer_name)
-    apply_rc, stdout, stderr = tf.apply(skip_plan=False, var=None, auto_approve=IsFlagged, input=False,
-                                        capture_output='No')
+    apply_rc, stdout, stderr = tf.apply(skip_plan=False, var=None, input=False, capture_output='No')
     if apply_rc != 0:
         raise TerraformCommandError(apply_rc, 'apply', stdout, stderr)
     return tf.output()

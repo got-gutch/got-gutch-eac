@@ -12,4 +12,3 @@ data "aws_caller_identity" "jenkins" {}
 data "aws_kms_alias" "s3_kms_alias" {
   name = "alias/aws/s3"
 }
-

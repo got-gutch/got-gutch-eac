@@ -19,6 +19,9 @@ module "got_gutch_sysadmin_role" {
     "arn:aws:iam::aws:policy/job-function/SystemAdministrator"
   ]
   number_of_custom_role_policy_arns = 1
+  tags = {
+    resource_group = var.namespace
+  }
 }
 
 module "got_gutch_admin_role" {
@@ -36,4 +39,7 @@ module "got_gutch_admin_role" {
     "arn:aws:iam::aws:policy/AdministratorAccess"
   ]
   number_of_custom_role_policy_arns = 1
+  tags = {
+    resource_group = var.namespace
+  }
 }
